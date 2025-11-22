@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DcRénovation | Architecture & Design</title>
+    <meta name="description" content="Rénovation haut de gamme intérieure et extérieure.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dc: {
+                            dark: '#1A2533',      /* Bleu Nuit Profond */
+                            light: '#F2F2F2',     /* Blanc Cassé / Pierre */
+                            gold: '#DFA253',      /* Doré Laiton */
+                            concrete: '#8F9AA3',  /* Gris Béton */
+                            glass: 'rgba(26, 37, 51, 0.7)'
+                        }
+                    },
+                    fontFamily: {
+                        heading: ['Space Grotesk', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- BASE STYLES --- */
+        body {
+            background-color: #1A2533;
+            color: #F2F2F2;
+            overflow-x: hidden; /* Important pour le smooth scroll */
+            cursor: none; /* On cache le curseur par défaut pour le custom */
+        }
+        
+        /* Fallback mobile : curseur visible */
+        @media (pointer: coarse) {
+            body { cursor: auto; }
+            .cursor-dot, .cursor-outline { display: none !important; }
+        }
+
+        /* --- SMOOTH SCROLL (LENIS) --- */
+        html.lenis { height: auto; } 
+        .lenis.lenis-smooth { scroll-behavior: auto; } 
+        .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; } 
+        .lenis.lenis-stopped { overflow: hidden; } 
+
+        /* --- TEXTURE GRAIN (Effet Premium) --- */
+        .grain {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- CANVAS 3D CONTAINER --- */
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none; /* Laisser passer les clics */
+            opacity: 0.5;
+        }
+
+        /* --- CUSTOM CURSOR --- */
+        .cursor-dot {
+            width: 8px; height: 8px; background: #DFA253;
+            position: fixed; top: 0; left: 0; border-radius: 50%;
+            z-index: 9999; pointer-events: none; transform: translate(-50%, -50%);
+        }
+        .cursor-outline {
+            width: 40px; height: 40px; border: 1px solid rgba(223, 162, 83, 0.5);
+            position: fixed; top: 0; left: 0; border-radius: 50%;
+            z-index: 9998; pointer-events: none; transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+
+        /* --- LOADER --- */
+        #loader {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+            transition: clip-path 0.8s cubic-bezier(0.87, 0, 0.13, 1);
+        }
+
+        /* --- ANIMATIONS UTILITAIRES --- */
+        .reveal-text { opacity: 0; transform: translateY(30px); }
+        
+        /* Transition douce pour la traduction */
+        [data-i18n] { transition: opacity 0.3s ease; }
+
+        /* Style pour les cartes 3D (Tilt) */
+        .tilt-card { perspective: 1000px; transform-style: preserve-3d; }
+        .tilt-inner { transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+        
+        /* Navigation Mobile Active */
+        .nav-mobile-item.active { color: #DFA253; }
+        .nav-mobile-item.active svg { stroke: #DFA253; }
+
+        /* Instagram Button Hover */
+        .insta-btn:hover .insta-icon { transform: rotate(45deg); }
+    </style>
+</head>
+<body class="font-body antialiased selection:bg-dc-gold selection:text-dc-dark">
+
+    <div id="loader" class="fixed inset-0 bg-dc-light z-[100] flex flex-col items-center justify-center text-dc-dark">
+        <div class="relative mb-8">
+            <div class="text-6xl md:text-8xl font-heading font-bold tracking-tighter">Dc.</div>
+            <div class="absolute -top-4 -right-4 text-dc-gold text-xl font-bold">+</div>
+        </div>
+        <div class="w-32 h-[1px] bg-gray-300 overflow-hidden relative">
+            <div id="loader-bar" class="absolute top-0 left-0 h-full w-0 bg-dc-dark"></div>
+        </div>
+        <p class="mt-4 text-[10px] uppercase tracking-[0.3em] font-bold animate-pulse">Loading Experience</p>
+    </div>
+
+    <div class="grain"></div>
+    <div class="cursor-dot hidden md:block"></div>
+    <div class="cursor-outline hidden md:block"></div>
+    
+    <div id="canvas-container"></div>
+
+    <nav class="fixed top-0 w-full px-8 py-6 flex justify-between items-center z-40 mix-blend-difference text-white hidden md:flex">
+        <a href="#" class="text-2xl font-heading font-bold tracking-tighter hover:text-dc-gold transition-colors">DcRénovation</a>
+        
+        <div class="flex gap-10 text-xs font-bold uppercase tracking-widest">
+            <a href="#services" class="hover:text-dc-gold transition-colors link-hover" data-i18n="nav_services">Services</a>
+            <a href="#about" class="hover:text-dc-gold transition-colors link-hover" data-i18n="nav_about">L'Atelier</a>
+            <a href="#portfolio" class="hover:text-dc-gold transition-colors link-hover" data-i18n="nav_portfolio">Réalisations</a>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <button id="lang-btn" class="text-[10px] font-bold border border-white/30 px-3 py-1 rounded-full hover:bg-white hover:text-dc-dark transition-all w-10 flex justify-center">FR</button>
+            
+            <a href="#contact" class="bg-dc-gold text-dc-dark px-6 py-3 rounded-sm font-bold text-xs uppercase tracking-wider hover:bg-white transition-colors link-hover" data-i18n="nav_contact">
+                Contact
+            </a>
+        </div>
+    </nav>
+
+    <div class="md:hidden fixed bottom-4 left-4 right-4 bg-dc-dark/90 backdrop-blur-xl border border-white/10 z-50 rounded-2xl p-4 shadow-2xl flex justify-between items-center">
+        <a href="#home" class="nav-mobile-item flex flex-col items-center gap-1 text-[10px] text-gray-400 active">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <span>Home</span>
+        </a>
+        <a href="#services" class="nav-mobile-item flex flex-col items-center gap-1 text-[10px] text-gray-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <span>Services</span>
+        </a>
+        <a href="#portfolio" class="nav-mobile-item flex flex-col items-center gap-1 text-[10px] text-gray-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span>Projets</span>
+        </a>
+        <button id="lang-btn-mobile" class="nav-mobile-item flex flex-col items-center gap-1 text-[10px] text-white font-bold">
+            <div class="w-5 h-5 border border-white/30 rounded-full flex items-center justify-center text-[8px]">FR</div>
+            <span>Lang</span>
+        </button>
+    </div>
+
+    <main class="relative z-10">
+
+        <section id="home" class="h-screen flex items-center px-6 md:px-24 relative overflow-hidden">
+            <div class="max-w-5xl w-full pt-20 md:pt-0">
+                <div class="overflow-hidden mb-4">
+                    <div class="flex items-center gap-3 reveal-text">
+                        <div class="w-8 h-[1px] bg-dc-gold"></div>
+                        <h2 class="text-dc-gold uppercase tracking-[0.2em] text-xs md:text-sm font-bold" data-i18n="hero_sub">Architecture & Rénovation</h2>
+                    </div>
+                </div>
+                
+                <h1 class="text-5xl md:text-8xl lg:text-9xl font-heading font-light leading-[0.95] mb-8 text-white">
+                    <div class="overflow-hidden"><span class="block reveal-text" data-i18n="hero_t1">DcRénovation</span></div>
+                    <div class="overflow-hidden"><span class="block reveal-text font-bold italic text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600" data-i18n="hero_t2">Arm</span></div>
+                </h1>
+
+                <p class="text-gray-400 max-w-lg text-lg font-light leading-relaxed mb-10 reveal-text" data-i18n="hero_desc">
+                    Nous transformons le brut en exceptionnel. Une expertise belge en rénovation complète, du gros œuvre aux finitions de luxe.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-5 reveal-text">
+                    <a href="#contact" class="bg-dc-gold text-dc-dark px-8 py-4 rounded-sm font-bold text-sm uppercase tracking-wider hover:bg-white transition-all flex items-center justify-center gap-2 group link-hover">
+                        <span data-i18n="btn_quote">Demander un devis</span>
+                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </a>
+                    <a href="https://www.instagram.com/dcrenovationarm/" target="_blank" class="insta-btn px-8 py-4 border border-white/20 rounded-sm font-bold text-sm uppercase tracking-wider hover:bg-white hover:text-dc-dark transition-all flex items-center justify-center gap-3 text-white link-hover">
+                        <svg class="w-4 h-4 insta-icon transition-transform duration-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        <span data-i18n="btn_insta">Suivre nos chantiers</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="services" class="py-24 px-6 md:px-24 bg-dc-dark/80 relative">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/10 pb-6">
+                    <h2 class="text-4xl md:text-5xl font-heading font-bold text-white" data-i18n="serv_title">Expertises <span class="text-dc-gold">.</span></h2>
+                    <p class="text-gray-400 text-right text-sm hidden md:block" data-i18n="serv_sub">Savoir-faire complet pour projets exigeants.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="tilt-card h-[420px] group cursor-pointer link-hover" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+                        <div class="tilt-inner h-full bg-[#232E3D] border border-white/5 p-8 rounded-xl relative overflow-hidden hover:border-dc-gold/40 transition-colors">
+                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-30 mix-blend-overlay"></div>
+                            <div class="w-12 h-12 bg-dc-gold/10 rounded-full flex items-center justify-center mb-8 text-dc-gold">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            </div>
+                            <h3 class="text-2xl font-heading font-bold mb-4 relative z-10" data-i18n="s1_t">Rénovation Intérieure</h3>
+                            <p class="text-gray-400 text-sm leading-7 relative z-10" data-i18n="s1_d">
+                                Transformation d'espaces, cloisons, faux-plafonds acoustiques et réagencement. Nous créons des volumes qui respirent.
+                            </p>
+                            <div class="absolute bottom-8 right-8 text-6xl font-heading font-bold text-white/5">01</div>
+                        </div>
+                    </div>
+
+                    <div class="tilt-card h-[420px] group cursor-pointer link-hover" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+                        <div class="tilt-inner h-full bg-[#232E3D] border border-white/5 p-8 rounded-xl relative overflow-hidden hover:border-dc-gold/40 transition-colors">
+                             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-10 mix-blend-overlay"></div>
+                            <div class="w-12 h-12 bg-dc-gold/10 rounded-full flex items-center justify-center mb-8 text-dc-gold">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            </div>
+                            <h3 class="text-2xl font-heading font-bold mb-4 relative z-10" data-i18n="s2_t">Matériaux & Sols</h3>
+                            <p class="text-gray-400 text-sm leading-7 relative z-10" data-i18n="s2_d">
+                                Pose de parquet massif, béton ciré, carrelage XXL et pierre naturelle. Une attention obsessionnelle aux joints et finitions.
+                            </p>
+                            <div class="absolute bottom-8 right-8 text-6xl font-heading font-bold text-white/5">02</div>
+                        </div>
+                    </div>
+
+                    <div class="tilt-card h-[420px] group cursor-pointer link-hover" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+                         <div class="tilt-inner h-full bg-[#232E3D] border border-white/5 p-8 rounded-xl relative overflow-hidden hover:border-dc-gold/40 transition-colors">
+                            <div class="w-12 h-12 bg-dc-gold/10 rounded-full flex items-center justify-center mb-8 text-dc-gold">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </div>
+                            <h3 class="text-2xl font-heading font-bold mb-4 relative z-10" data-i18n="s3_t">Technique & Extérieur</h3>
+                            <p class="text-gray-400 text-sm leading-7 relative z-10" data-i18n="s3_d">
+                                Électricité, plomberie sanitaire, mais aussi rénovation de façades et terrasses. Un seul interlocuteur pour tout le chantier.
+                            </p>
+                            <div class="absolute bottom-8 right-8 text-6xl font-heading font-bold text-white/5">03</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="portfolio" class="py-24 px-6 md:px-24 bg-dc-light text-dc-dark relative">
+            <div class="max-w-7xl mx-auto">
+                <div class="mb-16 text-center">
+                    <span class="text-xs font-bold text-dc-concrete uppercase tracking-widest" data-i18n="port_label">Portfolio</span>
+                    <h2 class="text-4xl md:text-6xl font-heading font-bold mt-4" data-i18n="port_title">Nos Projets Récents</h2>
+                </div>
+
+                <div class="space-y-24">
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center group">
+                        <div class="overflow-hidden rounded-lg shadow-2xl relative cursor-pointer">
+                            <img src="assets/recent1.png" 
+                                 class="w-full h-[500px] object-cover transition-transform duration-700 group-hover:scale-105" 
+                                 alt="Cuisine Rénovée">
+                            <div class="absolute top-4 left-4 bg-white/90 px-3 py-1 text-xs font-bold text-dc-dark uppercase">Bruxelles</div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-heading font-bold mb-4" data-i18n="p1_t">Cuisine</h3>
+                            <div class="h-1 w-12 bg-dc-gold mb-6"></div>
+                            <p class="text-gray-600 leading-relaxed mb-8" data-i18n="p1_d">
+                                Rénovation complète d’un espace brut, avec création d’une cuisine moderne et épurée. Installation d’un îlot central aux lignes minimalistes, réalisé sur mesure. Intégration d’un éclairage encastré et d’un système domotique discret pour un rendu élégant et contemporain.
+                            </p>
+                            <ul class="grid grid-cols-2 gap-4 text-sm font-bold text-dc-dark mb-8">
+                                <li>• Cuisine Sur-mesure</li>
+                                <li>• Sols Béton</li>
+                                <li>• Éclairage LED</li>
+                            </ul>
+                            <a href="https://www.instagram.com/dcrenovationarm/p/DQwmc5hjJke/" target="_blank" class="text-dc-dark font-bold border-b-2 border-dc-gold pb-1 hover:text-dc-gold transition-colors inline-flex items-center gap-2 link-hover">
+                                <span data-i18n="view_insta">Voir plus sur Instagram</span> ↗
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center group">
+                        <div class="lg:order-2 overflow-hidden rounded-lg shadow-2xl relative cursor-pointer">
+                            <img src="assets/recent2.png" 
+                                 class="w-full h-[500px] object-cover transition-transform duration-700 group-hover:scale-105" 
+                                 alt="Salle de Bain Luxe">
+                            <div class="absolute top-4 right-4 bg-white/90 px-3 py-1 text-xs font-bold text-dc-dark uppercase">Waterloo</div>
+                        </div>
+                        <div class="lg:order-1 lg:text-right flex flex-col items-end">
+                            <h3 class="text-3xl font-heading font-bold mb-4" data-i18n="p2_t">Salle de bain</h3>
+                            <div class="h-1 w-12 bg-dc-gold mb-6"></div>
+                            <p class="text-gray-600 leading-relaxed mb-8" data-i18n="p2_d">
+                                Transformation complète d’une salle de bain avec installation d’une douche à l’italienne et d’une baignoire îlot. Pose de grands carreaux aux effets marbrés artistiques pour un rendu luxueux et contemporain. Intégration d’un éclairage LED discret et d’un mobilier moderne aux lignes épurées pour une ambiance élégante et harmonieuse.
+                            </p>
+                            <a href="https://www.instagram.com/p/DQPPqcuDhsy/?img_index=1" target="_blank" class="text-dc-dark font-bold border-b-2 border-dc-gold pb-1 hover:text-dc-gold transition-colors inline-flex items-center gap-2 link-hover">
+                                <span data-i18n="view_insta">Voir plus sur Instagram</span> ↗
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="py-24 px-6 bg-dc-dark relative">
+            <div class="max-w-3xl mx-auto bg-[#1e2b3b] p-8 md:p-12 rounded-2xl border border-white/10 shadow-2xl">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl md:text-4xl font-heading font-bold text-white mb-2" data-i18n="ct_title">Parlez-nous de votre projet</h2>
+                    <p class="text-gray-400 text-sm" data-i18n="ct_sub">Devis gratuit & Conseils personnalisés</p>
+                </div>
+
+                <form class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="group">
+                            <label class="block text-xs text-dc-gold mb-2 uppercase font-bold" data-i18n="frm_name">Nom</label>
+                            <input type="text" class="w-full bg-dc-dark border border-gray-700 p-3 text-white rounded-sm focus:border-dc-gold focus:outline-none transition-colors" data-i18n-ph="ph_name">
+                        </div>
+                        <div class="group">
+                            <label class="block text-xs text-dc-gold mb-2 uppercase font-bold" data-i18n="frm_email">Email</label>
+                            <input type="email" class="w-full bg-dc-dark border border-gray-700 p-3 text-white rounded-sm focus:border-dc-gold focus:outline-none transition-colors" data-i18n-ph="ph_email">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="block text-xs text-dc-gold mb-2 uppercase font-bold" data-i18n="frm_msg">Votre Message</label>
+                        <textarea rows="4" class="w-full bg-dc-dark border border-gray-700 p-3 text-white rounded-sm focus:border-dc-gold focus:outline-none transition-colors" data-i18n-ph="ph_msg"></textarea>
+                    </div>
+                    <button class="w-full bg-dc-gold text-dc-dark font-bold py-4 uppercase tracking-widest hover:bg-white transition-colors link-hover" data-i18n="frm_btn">
+                        Envoyer
+                    </button>
+                </form>
+                
+                <div class="mt-8 pt-8 border-t border-white/5 flex justify-center">
+                     <a href="https://www.instagram.com/dcrenovationarm/" class="text-gray-400 hover:text-dc-gold flex items-center gap-2 transition-colors link-hover">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.645.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        <span class="text-sm font-bold">@dcrenovationarm</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
+    <script>
+        /* --- 1. GESTION DES LANGUES (FR/NL/EN) --- */
+        const translations = {
+            fr: {
+                nav_services: "Services", nav_about: "L'Atelier", nav_portfolio: "Réalisations", nav_contact: "Contact",
+                hero_sub: "Architecture & Rénovation", hero_t1: "ESPACES", hero_t2: "VIVANTS",
+                hero_desc: "Nous transformons le brut en exceptionnel. Une expertise belge en rénovation complète, du gros œuvre aux finitions de luxe.",
+                btn_quote: "Demander un devis", btn_insta: "Suivre nos chantiers",
+                serv_title: "Expertises", serv_sub: "Savoir-faire complet pour projets exigeants.",
+                s1_t: "Rénovation Intérieure", s1_d: "Transformation d'espaces, cloisons, faux-plafonds acoustiques et réagencement.",
+                s2_t: "Matériaux & Sols", s2_d: "Pose de parquet massif, béton ciré, carrelage XXL et pierre naturelle.",
+                s3_t: "Technique & Extérieur", s3_d: "Électricité, plomberie sanitaire, mais aussi rénovation de façades et terrasses.",
+                port_label: "Portfolio", port_title: "Nos Projets Récents",
+                p1_t: "Loft Industriel", p1_d: "Rénovation complète d'un plateau brut. Création d'une cuisine ouverte avec îlot en béton.",
+                p2_t: "Suite Parentale & Bain", p2_d: "Fusion de deux pièces pour créer une suite parentale avec salle de bain ouverte et marbre.",
+                view_insta: "Voir plus sur Instagram",
+                ct_title: "Parlez-nous de votre projet", ct_sub: "Devis gratuit & Conseils personnalisés",
+                frm_name: "Nom", frm_email: "Email", frm_msg: "Votre Message", frm_btn: "Envoyer",
+                ph_name: "Votre nom complet", ph_email: "exemple@email.com", ph_msg: "Décrivez votre projet..."
+            },
+            en: {
+                nav_services: "Services", nav_about: "The Studio", nav_portfolio: "Portfolio", nav_contact: "Contact",
+                hero_sub: "Architecture & Renovation", hero_t1: "LIVING", hero_t2: "SPACES",
+                hero_desc: "We transform the raw into the exceptional. Belgian expertise in complete renovation, from structural work to luxury finishes.",
+                btn_quote: "Get a Quote", btn_insta: "Follow our work",
+                serv_title: "Expertise", serv_sub: "Complete know-how for demanding projects.",
+                s1_t: "Interior Renovation", s1_d: "Space transformation, partitions, acoustic ceilings and layout rearrangement.",
+                s2_t: "Floors & Materials", s2_d: "Installation of solid parquet, waxed concrete, XXL tiling and natural stone.",
+                s3_t: "Technical & Exterior", s3_d: "Electricity, plumbing, as well as facade and terrace renovation.",
+                port_label: "Portfolio", port_title: "Recent Projects",
+                p1_t: "Industrial Loft", p1_d: "Complete renovation of a raw floor. Creation of an open kitchen with concrete island.",
+                p2_t: "Master Suite & Bath", p2_d: "Merging two rooms to create a master suite with open bathroom and marble.",
+                view_insta: "See more on Instagram",
+                ct_title: "Tell us about your project", ct_sub: "Free quote & Personalized advice",
+                frm_name: "Name", frm_email: "Email", frm_msg: "Your Message", frm_btn: "Send",
+                ph_name: "Your full name", ph_email: "example@email.com", ph_msg: "Describe your project..."
+            },
+            nl: {
+                nav_services: "Diensten", nav_about: "Het Atelier", nav_portfolio: "Projecten", nav_contact: "Contact",
+                hero_sub: "Architectuur & Renovatie", hero_t1: "LEVENDIGE", hero_t2: "RUIMTES",
+                hero_desc: "Wij transformeren het ruwe tot het uitzonderlijke. Belgische expertise in totaalrenovatie, van ruwbouw tot luxe afwerking.",
+                btn_quote: "Offerte aanvragen", btn_insta: "Volg onze werven",
+                serv_title: "Expertise", serv_sub: "Volledige knowhow voor veeleisende projecten.",
+                s1_t: "Interieurrenovatie", s1_d: "Ruimtetransformatie, scheidingswanden, akoestische plafonds en herinrichting.",
+                s2_t: "Vloeren & Materialen", s2_d: "Plaatsen van massief parket, betonstuc, XXL-tegels en natuursteen.",
+                s3_t: "Techniek & Exterieur", s3_d: "Elektriciteit, sanitair, maar ook gevel- en terrasrenovatie.",
+                port_label: "Portfolio", port_title: "Recente Projecten",
+                p1_t: "Industriële Loft", p1_d: "Volledige renovatie van een ruwe etage. Creatie van een open keuken met betoneiland.",
+                p2_t: "Master Suite & Bad", p2_d: "Samenvoegen van twee kamers tot een master suite met open badkamer en marmer.",
+                view_insta: "Meer zien op Instagram",
+                ct_title: "Vertel ons over uw project", ct_sub: "Gratis offerte & Persoonlijk advies",
+                frm_name: "Naam", frm_email: "E-mail", frm_msg: "Uw Bericht", frm_btn: "Versturen",
+                ph_name: "Uw volledige naam", ph_email: "voorbeeld@email.com", ph_msg: "Beschrijf uw project..."
+            }
+        };
+
+        let currentLangIndex = 0;
+        const langs = ['fr', 'nl', 'en'];
+        
+        function switchLang() {
+            currentLangIndex = (currentLangIndex + 1) % langs.length;
+            const lang = langs[currentLangIndex];
+            const data = translations[lang];
+
+            // Update text
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (data[key]) {
+                    el.style.opacity = 0;
+                    setTimeout(() => {
+                        el.innerHTML = data[key];
+                        el.style.opacity = 1;
+                    }, 200);
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (data[key]) el.placeholder = data[key];
+            });
+
+            // Update Buttons
+            document.getElementById('lang-btn').textContent = lang.toUpperCase();
+            const mobileBtn = document.querySelector('#lang-btn-mobile div');
+            if(mobileBtn) mobileBtn.textContent = lang.toUpperCase();
+        }
+
+        document.getElementById('lang-btn').addEventListener('click', switchLang);
+        document.getElementById('lang-btn-mobile')?.addEventListener('click', switchLang);
+
+
+        /* --- 2. INITIALISATIONS --- */
+        window.addEventListener('DOMContentLoaded', () => {
+            
+            // LOADER
+            const tl = gsap.timeline();
+            tl.to("#loader-bar", { width: "100%", duration: 1.2, ease: "power2.inOut" })
+              .to("#loader", { clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)", duration: 0.8, ease: "power4.inOut" })
+              .to(".reveal-text", { y: 0, opacity: 1, stagger: 0.1, duration: 0.8, ease: "power2.out" }, "-=0.4");
+
+            // SMOOTH SCROLL
+            if (typeof Lenis !== 'undefined') {
+                const lenis = new Lenis({ duration: 1.2, smooth: true });
+                function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+                requestAnimationFrame(raf);
+            }
+
+            // THREE.JS BACKGROUND (Léger et Architectural)
+            if (typeof THREE !== 'undefined') {
+                const scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x1A2533, 0.003);
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+                // Création de lignes architecturales (Grid 3D)
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                for (let i = 0; i < 100; i++) {
+                    const x = (Math.random() - 0.5) * 40;
+                    const y = (Math.random() - 0.5) * 40;
+                    const z = (Math.random() - 0.5) * 40;
+                    vertices.push(x, y, z);
+                    vertices.push(x + (Math.random() - 0.5)*5, y + (Math.random() - 0.5)*5, z + (Math.random() - 0.5)*5);
+                }
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                const material = new THREE.LineBasicMaterial({ color: 0x8F9AA3, opacity: 0.3, transparent: true });
+                const lines = new THREE.LineSegments(geometry, material);
+                scene.add(lines);
+
+                camera.position.z = 15;
+                
+                // Animation loop
+                let mouseY = 0;
+                let mouseX = 0;
+                document.addEventListener('mousemove', (e) => {
+                    mouseX = (e.clientX - window.innerWidth/2) * 0.0005;
+                    mouseY = (e.clientY - window.innerHeight/2) * 0.0005;
+                });
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    lines.rotation.y += 0.001 + mouseX;
+                    lines.rotation.x += 0.001 + mouseY;
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+
+            // CURSOR CUSTOM
+            const cursorDot = document.querySelector('.cursor-dot');
+            const cursorOutline = document.querySelector('.cursor-outline');
+            
+            window.addEventListener('mousemove', (e) => {
+                if(!cursorDot) return;
+                cursorDot.style.left = e.clientX + 'px';
+                cursorDot.style.top = e.clientY + 'px';
+                
+                cursorOutline.animate({
+                    left: e.clientX + 'px',
+                    top: e.clientY + 'px'
+                }, { duration: 500, fill: "forwards" });
+            });
+
+            // Hover Effect on Links
+            document.querySelectorAll('.link-hover').forEach(link => {
+                link.addEventListener('mouseenter', () => {
+                    cursorOutline.style.width = '60px';
+                    cursorOutline.style.height = '60px';
+                    cursorOutline.style.backgroundColor = 'rgba(223, 162, 83, 0.1)';
+                });
+                link.addEventListener('mouseleave', () => {
+                    cursorOutline.style.width = '40px';
+                    cursorOutline.style.height = '40px';
+                    cursorOutline.style.backgroundColor = 'transparent';
+                });
+            });
+        });
+
+        /* --- 3. TILT EFFECT (CARTES) --- */
+        window.handleTilt = (e, card) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const rotateX = ((y - centerY) / centerY) * -8;
+            const rotateY = ((x - centerX) / centerX) * 8;
+            
+            card.querySelector('.tilt-inner').style.transform = 
+                `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+        };
+        window.resetTilt = (card) => {
+            card.querySelector('.tilt-inner').style.transform = 
+                `perspective(1000px) rotateX(0) rotateY(0) scale(1)`;
+        };
+    </script>
+</body>
+</html>
